@@ -1,6 +1,6 @@
 # Render Infrastructure as Code (Blueprint) for Zero-Cost Backend Deployment
 services:
-  # 1. FastAPI REST API Web Service
+  # 1. FastAPI REST API Web Service (100% Free Tier)
   - type: web
     name: doculedger-api
     runtime: docker
@@ -18,19 +18,9 @@ services:
       - key: APP_NAME
         value: "DocuLedger B2B Parser API"
       - key: DATABASE_URL
-        sync: false # Connect to Supabase Free Tier (postgresql+asyncpg://...)
+        sync: false # Connect to Supabase (postgresql+asyncpg://postgres:PASSWORD@...)
       - key: SYNC_DATABASE_URL
-        sync: false # Connect to Supabase Free Tier (postgresql://...)
-      - key: REDIS_URL
-        fromService:
-          type: redis
-          name: doculedger-redis
-          property: connectionString
-      - key: CELERY_BROKER_URL
-        fromService:
-          type: redis
-          name: doculedger-redis
-          property: connectionString
+        sync: false # Connect to Supabase (postgresql://postgres:PASSWORD@...)
       - key: SECRET_KEY
         generateValue: true
       - key: FRONTEND_URL
@@ -43,50 +33,3 @@ services:
         sync: false
       - key: OPENAI_API_KEY
         sync: false
-
-  # 2. Celery Asynchronous Queue Background Worker
-  - type: worker
-    name: doculedger-worker
-    runtime: docker
-    dockerfilePath: backend/Dockerfile
-    dockerContext: backend
-    plan: free
-    region: frankfurt
-    startCommand: celery -A app.tasks.celery_app worker --loglevel=info --concurrency=2
-    autoDeploy: true
-    envVars:
-      - key: ENVIRONMENT
-        value: production
-      - key: DATABASE_URL
-        sync: false
-      - key: SYNC_DATABASE_URL
-        sync: false
-      - key: REDIS_URL
-        fromService:
-          type: redis
-          name: doculedger-redis
-          property: connectionString
-      - key: CELERY_BROKER_URL
-        fromService:
-          type: redis
-          name: doculedger-redis
-          property: connectionString
-      - key: SECRET_KEY
-        fromService:
-          type: web
-          name: doculedger-api
-          envVarKey: SECRET_KEY
-      - key: STRIPE_SECRET_KEY
-        sync: false
-      - key: ANTHROPIC_API_KEY
-        sync: false
-      - key: OPENAI_API_KEY
-        sync: false
-
-  # 3. Redis Instance for Queue & Token Blacklisting
-  - type: redis
-    name: doculedger-redis
-    plan: free
-    region: frankfurt
-    maxmemoryPolicy: allkeys-lru
-    ipAllowList: [] # Accessible by all services in this private Render network
