@@ -13,7 +13,11 @@ async def lifespan(app: FastAPI):
     # Startup
     setup_logging()
     logger.info("Initializing database schema...")
-    init_db()
+    try:
+        init_db()
+        logger.info("Database schema verified")
+    except Exception as e:
+        logger.warning("Database initialization deferred or failed", error=str(e))
     logger.info("DocuLedger backend successfully initialized", app_name=settings.APP_NAME)
     yield
     # Shutdown
@@ -42,6 +46,22 @@ app.add_middleware(
 
 # 3. Mount API Routers
 app.include_router(api_router, prefix=settings.API_V1_STR)
+
+
+@app.get("/", tags=["Root"])
+def root():
+    return {
+        "status": "online",
+        "service": settings.APP_NAME,
+        "docs": f"{settings.API_V1_STR}/docs",
+        "health": "/health",
+    }
+
+
+@app.get("/docs", include_in_schema=False)
+def redirect_to_docs():
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url=f"{settings.API_V1_STR}/docs")
 
 
 @app.get("/health", tags=["Health"])
